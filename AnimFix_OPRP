@@ -124,7 +124,7 @@ stock OPRCFIXANIM_ApplyAnimation(playerid, animlib[], animname[], Float:fDelta, 
 forward OPRCFIXANIManim(playerid);
 public OPRCFIXANIManim(playerid)
 {
-	if(IsPlayerConnected(playerid))
+	if(IsPlayerConnected(playerid) && OPRCFIXANIM_ClassReached[playerid] == 1)
 	    ApplyAnimation(playerid, OPRCFIX_pAnimLib[playerid], OPRCFIX_pAnimName[playerid],
 				OPRCFIX_pFDelta[playerid], OPRCFIX_pLoop[playerid], OPRCFIX_pLockX[playerid],
 				OPRCFIX_pLockY[playerid], OPRCFIX_pFreeze[playerid], OPRCFIX_pTime[playerid],
