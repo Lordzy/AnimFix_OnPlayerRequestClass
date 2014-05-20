@@ -1,0 +1,149 @@
+/*______________________________________________________________________________
+
+						Animation fix under OnPlayerRequestClass
+						        - Lordzy.
+
+BUG : When the player reaches on the class selection and if an animation is
+	  called under it, it won't work get performed.
+FIX : The animation should be called twice if it's the first time player being
+	  on class selection since connected. Though, after the first call, the
+	  second call should be delayed.
+
+
+NOTE : This is a BETA include, it was just meant to be showed to Y_Less and know
+	   if this can be added into fixes.inc
+______________________________________________________________________________*/
+
+#if defined _included_OPRCFIXANIM
+	#endinput
+#endif
+
+#define _included_OPRCFIXANIM
+
+#tryinclude <a_samp>
+
+#define strcpy(%0,%1,%2) \
+    strcat((%0[0] = '\0', %0), %1, %2) //Thanks to Y_Less.
+
+static
+	OPRCFIXANIM_pAnimTimer[MAX_PLAYERS] = {-1, ...}, //Since timer ids start from 0.
+	OPRCFIXANIM_ClassReached[MAX_PLAYERS] = {-1, ...}; //Default value of the variable.
+
+//I faced some trouble on passing strings under timers. So, using arrays.
+static
+	    OPRCFIX_pAnimLib[MAX_PLAYERS][60],
+	    OPRCFIX_pAnimName[MAX_PLAYERS][60],
+	    Float:OPRCFIX_pFDelta[MAX_PLAYERS],
+	    OPRCFIX_pLoop[MAX_PLAYERS],
+	    OPRCFIX_pTime[MAX_PLAYERS],
+	    OPRCFIX_pLockX[MAX_PLAYERS],
+	    OPRCFIX_pLockY[MAX_PLAYERS],
+	    OPRCFIX_pFreeze[MAX_PLAYERS],
+	    OPRCFIX_pForceSync[MAX_PLAYERS];
+
+public OnPlayerConnect(playerid)
+{
+	OPRCFIXANIM_ClassReached[playerid] = -1; //Resetting the variables in case if there's any problem.
+	//print("OPC : Alive");
+	#if defined OPRCFIXANIM_OnPlayerConnect
+	return OPRCFIXANIM_OnPlayerConnect(playerid);
+	#else
+	return 1;
+	#endif
+}
+
+#if defined _ALS_OnPlayerConnect
+	#undef OnPlayerConnect
+#else
+	#define _ALS_OnPlayerConnect
+#endif
+
+#define OnPlayerConnect OPRCFIXANIM_OnPlayerConnect
+
+#if defined OPRCFIXANIM_OnPlayerConnect
+forward OPRCFIXANIM_OnPlayerConnect(playerid);
+#endif
+
+
+public OnPlayerRequestClass(playerid, classid)
+{
+	if(OPRCFIXANIM_ClassReached[playerid] == -1) //If the player got into class for the first time.
+		OPRCFIXANIM_ClassReached[playerid] = 1;
+	else if(OPRCFIXANIM_ClassReached[playerid] == 1)
+	    OPRCFIXANIM_ClassReached[playerid] = 0; //That's it, the player might have changed classes.
+	//printf("OPRC : Alive");
+	#if defined lfixanim_OnPlayerRequestClass
+	return lfixanim_OnPlayerRequestClass(playerid, classid);
+	#else
+	return 1;
+	#endif
+}
+
+#if defined _ALS_OnPlayerRequestClass
+	#undef OnPlayerRequestClass
+#else
+	#define _ALS_OnPlayerRequestClass
+#endif
+
+#define OnPlayerRequestClass lfixanim_OnPlayerRequestClass
+
+#if defined lfixanim_OnPlayerRequestClass
+forward lfixanim_OnPlayerRequestClass(playerid, classid);
+#endif
+
+
+stock OPRCFIXANIM_ApplyAnimation(playerid, animlib[], animname[], Float:fDelta, loop, lockx, locky, freeze, time, forcesync = 0)
+{
+	if(!IsPlayerConnected(playerid)) return 0;
+	//print("OPRCFIXANIM_ApplyAnim : First");
+ 	ApplyAnimation(playerid, animlib, animname, fDelta, loop, lockx, locky, freeze, time, forcesync);
+	if(OPRCFIXANIM_ClassReached[playerid] == 1)
+	{
+	    //Applyanimation should be called twice but the second one should be slightly delayed.
+		if(OPRCFIXANIM_pAnimTimer[playerid] == -1)
+		{
+		    //print("OPRCFIXANIM_ApplyAnim : Second");
+		    strcpy(OPRCFIX_pAnimLib[playerid], animlib, 60);
+		    strcpy(OPRCFIX_pAnimName[playerid], animname, 60);
+		    //printf("Copied");
+			OPRCFIX_pFDelta[playerid] = fDelta;
+			OPRCFIX_pLoop[playerid] = loop;
+			OPRCFIX_pLockX[playerid] = lockx;
+			OPRCFIX_pLockY[playerid] = locky;
+			OPRCFIX_pFreeze[playerid] = freeze;
+			OPRCFIX_pTime[playerid] = time;
+			OPRCFIX_pForceSync[playerid] = forcesync;
+			//printf("Imma alive");
+			OPRCFIXANIM_pAnimTimer[playerid] = SetTimerEx("OPRCFIXANIManim", 350, false, "d", playerid);
+			//printf("OH?");
+		}
+	}
+	return 1;
+}
+
+forward OPRCFIXANIManim(playerid);
+public OPRCFIXANIManim(playerid)
+{
+	if(IsPlayerConnected(playerid))
+	    ApplyAnimation(playerid, OPRCFIX_pAnimLib[playerid], OPRCFIX_pAnimName[playerid],
+				OPRCFIX_pFDelta[playerid], OPRCFIX_pLoop[playerid], OPRCFIX_pLockX[playerid],
+				OPRCFIX_pLockY[playerid], OPRCFIX_pFreeze[playerid], OPRCFIX_pTime[playerid],
+				OPRCFIX_pForceSync[playerid]);
+	OPRCFIXANIM_pAnimTimer[playerid] = -1;
+	//print("Completed");
+	return 1;
+}
+
+
+#if defined _ALS_ApplyAnimation
+	#undef ApplyAnimation
+#else
+	#define _ALS_ApplyAnimation
+#endif
+
+#define ApplyAnimation OPRCFIXANIM_ApplyAnimation
+
+
+//EOF
+
+	
